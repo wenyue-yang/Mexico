@@ -1,0 +1,106 @@
+**This do-file reads ENOE data, harmonize it with ISIC4 then EUKLEMS, and compute the transition matrix for both skilled and unskilled workers
+clear all
+set more off
+
+if c(username) == "WB528217"{		
+	global mainfolder "C:\Users\wb528217\OneDrive - WBG\Mexico\Data"
+}
+
+//2014Q1 to 2015Q1
+import dbase using "$mainfolder\2014trim1\sdemt114.dbf"
+tempfile master2014Q1
+save `master2014Q1'
+import dbase using "$mainfolder\2014trim1\coe1t114.dbf", clear
+merge 1:1 CD_A ENT CON V_SEL N_HOG H_MUD N_REN using `master2014Q1'
+drop _merge
+tempfile 2014Q1
+save `2014Q1'
+
+import dbase using "$mainfolder\2015trim1\sdemt115.dbf", clear
+tempfile master2015Q1
+save `master2015Q1'
+import dbase using "$mainfolder\2015trim1\coe1t115.dbf", clear
+merge 1:1 CD_A ENT CON V_SEL N_HOG H_MUD N_REN using `master2015Q1'
+drop _merge
+merge 1:1 CD_A ENT CON V_SEL N_HOG H_MUD N_REN using `2014Q1'
+
+//2015Q1 to 2016Q1
+import dbase using "$mainfolder\2015trim1\sdemt115.dbf"
+tempfile master2015Q1
+save `master2015Q1'
+import dbase using "$mainfolder\2015trim1\coe1t115.dbf", clear
+merge 1:1 CD_A ENT CON V_SEL N_HOG H_MUD N_REN using `master2015Q1'
+drop _merge
+tempfile 2015Q1
+save `2015Q1'
+
+import dbase using "$mainfolder\2016trim1\sdemt116.dbf", clear
+tempfile master2016Q1
+save `master2016Q1'
+import dbase using "$mainfolder\2016trim1\coe1t116.dbf", clear
+merge 1:1 CD_A ENT CON V_SEL N_HOG H_MUD N_REN using `master2016Q1'
+drop _merge
+merge 1:1 CD_A ENT CON V_SEL N_HOG H_MUD N_REN using `2015Q1'
+
+cd "C:\Users\wb528217\OneDrive - WBG\Mexico\Data\2014trim1"
+local allfiles: dir . files "*.dbf"
+foreach f in `allfiles' {
+import dbase using "`f'", clear
+local nodbf= subinstr("`f'", ".dbf", "", .)
+    save "`nodbf'.dta", replace
+}
+local statfiles: dir. files "*.dta"
+
+
+shell "C:\Program Files (x86)\Google\Chrome\Application\chrome.exe" "https://www.youtube.com/watch?v=JGwWNGJdvx8";
+foreach file in ""
+
+//map the SCIAN 6 digit to ISIC and then to EUKLEMS
+drop _merge
+ren P4A SCIAN2007
+
+**clean outlier values for SCIAN2007
+/*
+replace SCIAN2007="9999" if SCIAN2007=="XXXXXX"|SCIAN2007=="YYYYYY"
+destring SCIAN2007, replace
+format SCIAN2007 %8.0g
+*/
+merge m:1 SCIAN2007 using "$mainfolder\SCIAN_ISIC4_IFR.dta"
+
+
+/*
+2014Q1
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                        92,344
+        from master                         0  (_merge==1)
+        from using                     92,344  (_merge==2)
+
+    matched                           311,670  (_merge==3)
+    -----------------------------------------
+
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                        85,667
+        from master                         0  (_merge==1)
+        from using                     85,667  (_merge==2)
+
+    matched                           306,380  (_merge==3)
+    -----------------------------------------
+
+*/
+
+
+//keep 15 to 64 years of age, Salaried workers (that is, exclude self-employed, family workers and employers)
+destring NAC_ANIO, replace
+keep if NAC_ANIO>=1953 & NAC_ANIO<=2002
+
+keep if POS_OCU==1 //need further verification
+
+//map this to EUKLEMS, for example
+
+save "$"
+ 
+
